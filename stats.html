@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>統計報表｜木木人 AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:    #1A1A2E;
+  --gold:   #C9A84C;
+  --gold-lt:#E8D5A3;
+  --paper:  #F5F0E8;
+  --cream:  #EDE7DB;
+  --sage:   #6B7C6E;
+  --border: #D4C5A0;
+  --white:  #FFFFFF;
+  --shadow: rgba(26,26,46,0.10);
+}
+
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── Header ── */
+header {
+  background: var(--ink);
+  padding: 0 32px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 3px solid var(--gold);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.logo-bar { width: 4px; height: 28px; background: var(--gold); border-radius: 2px; }
+header h1 { font-family: 'Noto Serif TC', serif; font-size: 18px; color: var(--gold-lt); letter-spacing: 0.05em; }
+header a  { margin-left: auto; font-size: 12px; color: var(--gold); text-decoration: none; opacity: 0.8; }
+header a:hover { opacity: 1; }
+
+/* ── Month Nav ── */
+.month-bar-wrap { background: var(--ink); border-bottom: 1px solid rgba(201,168,76,0.2); }
+.month-bar {
+  max-width: 1100px; margin: 0 auto;
+  padding: 12px 32px;
+  display: flex; align-items: center; gap: 16px;
+}
+.month-nav {
+  display: flex; align-items: center; gap: 12px;
+}
+.nav-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,76,0.35);
+  background: transparent;
+  color: var(--gold);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.nav-btn:hover:not(:disabled) { background: rgba(201,168,76,0.15); }
+.nav-btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.month-label {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 18px;
+  color: var(--gold-lt);
+  min-width: 110px;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+.month-pills { display: flex; gap: 6px; margin-left: 8px; flex-wrap: wrap; }
+.month-pill {
+  padding: 4px 12px; border-radius: 100px;
+  border: 1px solid rgba(201,168,76,0.25);
+  background: transparent;
+  color: rgba(232,213,163,0.55);
+  font-size: 12px; cursor: pointer;
+  transition: all 0.15s;
+}
+.month-pill.active { background: var(--gold); color: var(--ink); font-weight: 700; border-color: var(--gold); }
+.month-pill:hover:not(.active) { border-color: var(--gold); color: var(--gold-lt); }
+
+/* ── Summary Cards ── */
+.summary-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 32px 0; }
+.stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow: 0 2px 8px var(--shadow);
+  text-align: center;
+}
+.stat-num {
+  font-family: 'Noto Serif TC', serif;
+  font-size: 32px;
+  color: var(--gold);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.stat-sub { font-size: 12px; color: var(--sage); margin-top: 2px; }
+.stat-label { font-size: 12px; color: var(--sage); margin-top: 6px; letter-spacing: 0.04em; }
+
+/* ── Charts ── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  gap: 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 32px 48px;
+}
+
+.chart-panel {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+
+.chart-panel h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-panel h3::before {
+  content: '';
+  display: block;
+  width: 3px; height: 14px;
+  background: var(--gold);
+  border-radius: 2px;
+}
+
+.chart-canvas-wrap { position: relative; }
+#lineChart { max-height: 280px; }
+#pieChart  { max-height: 300px; }
+
+.empty-chart {
+  text-align: center;
+  padding: 60px 0;
+  color: var(--sage);
+  font-size: 13px;
+}
+
+/* ── Loading ── */
+.page-loading { text-align: center; padding: 80px 0; color: var(--sage); font-size: 14px; }
+
+@media (max-width: 800px) {
+  .charts-row { grid-template-columns: 1fr; padding: 0 16px 32px; }
+  .stat-cards { grid-template-columns: repeat(3,1fr); }
+  .summary-wrap { padding: 16px 16px 0; }
+  .month-bar { padding: 12px 16px; }
+}
+@media (max-width: 500px) {
+  .stat-cards { grid-template-columns: 1fr 1fr; }
+  .stat-cards .stat-card:last-child { grid-column: span 2; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-bar"></div>
+  <h1>木木人 AI｜統計報表</h1>
+  <a href="/">← 回主頁</a>
+</header>
+
+<div class="month-bar-wrap">
+  <div class="month-bar">
+    <div class="month-nav">
+      <button class="nav-btn" id="prevBtn" onclick="changeMonth(-1)">‹</button>
+      <span class="month-label" id="monthLabel">載入中…</span>
+      <button class="nav-btn" id="nextBtn" onclick="changeMonth(1)">›</button>
+    </div>
+    <div class="month-pills" id="monthPills"></div>
+  </div>
+</div>
+
+<div class="summary-wrap">
+  <div class="stat-cards" id="statCards">
+    <div class="stat-card"><div class="stat-num" id="statTotal">—</div><div class="stat-label">本月分享篇數</div></div>
+    <div class="stat-card"><div class="stat-num" id="statPeak">—</div><div class="stat-sub" id="statPeakDate"></div><div class="stat-label">單日最多</div></div>
+    <div class="stat-card"><div class="stat-num" id="statSources">—</div><div class="stat-label">來源數</div></div>
+  </div>
+</div>
+
+<div class="charts-row">
+  <div class="chart-panel">
+    <h3>每日分享次數</h3>
+    <div class="chart-canvas-wrap">
+      <div class="empty-chart" id="lineEmpty" style="display:none">本月無資料</div>
+      <canvas id="lineChart"></canvas>
+    </div>
+  </div>
+  <div class="chart-panel">
+    <h3>來源分布</h3>
+    <div class="chart-canvas-wrap">
+      <div class="empty-chart" id="pieEmpty" style="display:none">本月無資料</div>
+      <canvas id="pieChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+let allData   = [];
+let lineChart = null;
+let pieChart  = null;
+
+const today     = new Date();
+let viewYear    = today.getFullYear();
+let viewMonth   = today.getMonth(); // 0-indexed
+
+const MONTHS_ZH = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+const PIE_COLORS = [
+  '#C9A84C','#1A1A2E','#6B7C6E','#B6935A',
+  '#4A6572','#8A7A50','#5C7A7A','#7A5C6A',
+  '#4A5C7A','#7A6A4A',
+];
+
+/* ── 資料載入 ── */
+async function loadData() {
+  try {
+    const resp = await fetch('/api/sheets');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const raw = await resp.json();
+    allData = raw.map(row => {
+      const n = {};
+      for (const [k, v] of Object.entries(row)) n[k.trim()] = v;
+      return n;
+    });
+    buildMonthPills();
+    renderMonth();
+  } catch(e) {
+    document.querySelector('.summary-wrap').innerHTML =
+      `<div class="page-loading">載入失敗：${e.message}</div>`;
+  }
+}
+
+/* ── 工具函式 ── */
+function getSentLocalDate(r) {
+  const raw = r['傳送時間'] || '';
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (isNaN(d)) return null;
+  // UTC+8 Taiwan
+  return new Date(d.getTime() + 8 * 3600000);
+}
+
+function getDomain(r) {
+  const url = r['連結'] || r[''] || '';
+  if (!url) return '（無連結）';
+  try {
+    const href = url.startsWith('http') ? url : 'https://doi.org/' + url;
+    return new URL(href).hostname.replace(/^www\./, '');
+  } catch { return '其他'; }
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+/* ── 月份快捷 pills（最近 6 個月）── */
+function buildMonthPills() {
+  const el = document.getElementById('monthPills');
+  const pills = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    pills.push({ y: d.getFullYear(), m: d.getMonth() });
+  }
+  el.innerHTML = pills.map(p =>
+    `<button class="month-pill ${p.y===viewYear&&p.m===viewMonth?'active':''}"
+      onclick="jumpMonth(${p.y},${p.m})">${p.y}/${p.m+1}</button>`
+  ).join('');
+}
+
+function updatePills() {
+  document.querySelectorAll('.month-pill').forEach(btn => {
+    const [y, m] = btn.textContent.split('/').map(Number);
+    btn.classList.toggle('active', y === viewYear && m - 1 === viewMonth);
+  });
+}
+
+/* ── 月份切換 ── */
+function changeMonth(delta) {
+  viewMonth += delta;
+  if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+  if (viewMonth > 11) { viewMonth = 0;  viewYear++; }
+  updateControls();
+  renderMonth();
+}
+
+function jumpMonth(y, m) {
+  viewYear = y; viewMonth = m;
+  updateControls();
+  renderMonth();
+}
+
+function updateControls() {
+  const isCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
+  document.getElementById('nextBtn').disabled = isCurrentMonth;
+  document.getElementById('monthLabel').textContent = `${viewYear} 年 ${MONTHS_ZH[viewMonth]}`;
+  updatePills();
+}
+
+/* ── 主渲染 ── */
+function renderMonth() {
+  updateControls();
+
+  // 篩選本月資料
+  const monthData = allData.filter(r => {
+    const d = getSentLocalDate(r);
+    if (!d) return false;
+    return d.getUTCFullYear() === viewYear && d.getUTCMonth() === viewMonth;
+  });
+
+  renderStats(monthData);
+  renderLineChart(monthData);
+  renderPieChart(monthData);
+}
+
+/* ── 統計卡 ── */
+function renderStats(data) {
+  document.getElementById('statTotal').textContent = data.length;
+
+  // 單日最多
+  const dayMap = {};
+  data.forEach(r => {
+    const d = getSentLocalDate(r);
+    if (!d) return;
+    const key = d.getUTCDate();
+    dayMap[key] = (dayMap[key] || 0) + 1;
+  });
+  const peakDay   = Object.entries(dayMap).sort((a,b) => b[1]-a[1])[0];
+  if (peakDay) {
+    document.getElementById('statPeak').textContent    = peakDay[1] + ' 篇';
+    document.getElementById('statPeakDate').textContent = `${viewMonth+1}/${peakDay[0]}`;
+  } else {
+    document.getElementById('statPeak').textContent    = '—';
+    document.getElementById('statPeakDate').textContent = '';
+  }
+
+  // 來源數
+  const domains = new Set(data.map(getDomain).filter(d => d !== '（無連結）'));
+  document.getElementById('statSources').textContent = domains.size || '—';
+}
+
+/* ── 折線圖 ── */
+function renderLineChart(data) {
+  const totalDays = daysInMonth(viewYear, viewMonth);
+  const counts    = Array(totalDays).fill(0);
+  const labels    = Array.from({ length: totalDays }, (_, i) => `${i+1}日`);
+
+  data.forEach(r => {
+    const d = getSentLocalDate(r);
+    if (!d) return;
+    const day = d.getUTCDate() - 1;
+    if (day >= 0 && day < totalDays) counts[day]++;
+  });
+
+  const hasData = counts.some(c => c > 0);
+  document.getElementById('lineEmpty').style.display = hasData ? 'none' : 'block';
+  document.getElementById('lineChart').style.display = hasData ? 'block' : 'none';
+  if (!hasData) { if (lineChart) { lineChart.destroy(); lineChart = null; } return; }
+
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: '分享篇數',
+        data: counts,
+        borderColor: '#C9A84C',
+        backgroundColor: 'rgba(201,168,76,0.08)',
+        borderWidth: 2.5,
+        tension: 0.35,
+        fill: true,
+        pointRadius: counts.map(c => c > 0 ? 5 : 2),
+        pointHoverRadius: 7,
+        pointBackgroundColor: '#C9A84C',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1A1A2E',
+          titleColor: '#E8D5A3',
+          bodyColor: '#C9A84C',
+          borderColor: 'rgba(201,168,76,0.3)',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => ` ${ctx.parsed.y} 篇`,
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(212,197,160,0.3)' },
+          ticks: {
+            color: '#6B7C6E', font: { size: 11 },
+            maxTicksLimit: 10,
+            callback: (val, i) => (i + 1) % 5 === 0 || i === 0 ? labels[i] : '',
+          }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            color: '#6B7C6E', font: { size: 11 },
+            stepSize: 1,
+            callback: v => Number.isInteger(v) ? v : '',
+          },
+          grid: { color: 'rgba(212,197,160,0.3)' }
+        }
+      }
+    }
+  });
+}
+
+/* ── 圓餅圖 ── */
+function renderPieChart(data) {
+  // 統計 domain
+  const domainMap = {};
+  data.forEach(r => {
+    const d = getDomain(r);
+    domainMap[d] = (domainMap[d] || 0) + 1;
+  });
+
+  const sorted = Object.entries(domainMap).sort((a,b) => b[1]-a[1]);
+  const TOP    = 7;
+  let labels = [], counts = [];
+
+  if (sorted.length > TOP) {
+    const top    = sorted.slice(0, TOP);
+    const others = sorted.slice(TOP).reduce((s, [,v]) => s + v, 0);
+    labels = top.map(([k]) => k);
+    counts = top.map(([,v]) => v);
+    labels.push('其他'); counts.push(others);
+  } else {
+    labels = sorted.map(([k]) => k);
+    counts = sorted.map(([,v]) => v);
+  }
+
+  const hasData = counts.length > 0;
+  document.getElementById('pieEmpty').style.display = hasData ? 'none' : 'block';
+  document.getElementById('pieChart').style.display = hasData ? 'block' : 'none';
+  if (!hasData) { if (pieChart) { pieChart.destroy(); pieChart = null; } return; }
+
+  const ctx = document.getElementById('pieChart').getContext('2d');
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: PIE_COLORS.slice(0, labels.length),
+        borderColor: '#F5F0E8',
+        borderWidth: 2,
+        hoverOffset: 8,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '52%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#1A1A2E',
+            font: { size: 11, family: "'Noto Sans TC', sans-serif" },
+            padding: 12,
+            usePointStyle: true,
+            pointStyleWidth: 10,
+            generateLabels: chart => {
+              const ds = chart.data.datasets[0];
+              const total = ds.data.reduce((a,b) => a+b, 0);
+              return chart.data.labels.map((label, i) => ({
+                text: `${label}  ${ds.data[i]}篇 (${Math.round(ds.data[i]/total*100)}%)`,
+                fillStyle: ds.backgroundColor[i],
+                strokeStyle: ds.borderColor,
+                lineWidth: 0,
+                index: i,
+              }));
+            }
+          }
+        },
+        tooltip: {
+          backgroundColor: '#1A1A2E',
+          titleColor: '#E8D5A3',
+          bodyColor: '#C9A84C',
+          borderColor: 'rgba(201,168,76,0.3)',
+          borderWidth: 1,
+          callbacks: {
+            label: ctx => {
+              const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+              const pct   = Math.round(ctx.parsed / total * 100);
+              return ` ${ctx.parsed} 篇  (${pct}%)`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+loadData();
+</script>
+</body>
+</html>
