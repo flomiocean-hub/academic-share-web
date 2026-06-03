@@ -2,8 +2,9 @@
   "buildCommand": null,
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/join",   "destination": "/join.html"   },
-    { "source": "/search", "destination": "/search.html" },
-    { "source": "/stats",  "destination": "/stats.html"  }
+    { "source": "/join",    "destination": "/join.html"    },
+    { "source": "/search",  "destination": "/search.html"  },
+    { "source": "/stats",   "destination": "/stats.html"   },
+    { "source": "/analyze", "destination": "/analyze.html" }
   ]
 }
