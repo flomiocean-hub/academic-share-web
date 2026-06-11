@@ -32,20 +32,6 @@ export default async function handler(req, res) {
       continue;
     }
 
-    // ── 傳訊息：回覆 User ID ──
-    if (event.type === 'message') {
-      await fetch('https://api.line.me/v2/bot/message/reply', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${lineToken}` },
-        body:    JSON.stringify({
-          replyToken: event.replyToken,
-          messages: [{
-            type: 'text',
-            text: `您的專屬識別碼：\n${userId}\n\n請截圖傳給管理員 Marco 完成設定 🙏`,
-          }],
-        }),
-      });
-    }
   }
 
   res.status(200).json({ ok: true });
