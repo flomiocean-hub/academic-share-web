@@ -834,13 +834,24 @@ const C = {
 };
 
 /* ── Font loading ── */
-async function loadCanvasFonts() {
+async function loadCanvasFonts(titleText = '') {
+  const probe = titleText ? (() => {
+    const el = document.createElement('span');
+    el.style.cssText = 'font:700 56px "Noto Serif TC",serif;position:absolute;visibility:hidden;left:-9999px;top:-9999px;white-space:nowrap;';
+    el.textContent = titleText;
+    document.body.appendChild(el);
+    return el;
+  })() : null;
+
   await Promise.all([
-    document.fonts.load('400 16px "Noto Sans TC"'),
-    document.fonts.load('700 16px "Noto Sans TC"'),
-    document.fonts.load('700 16px "Noto Serif TC"'),
+    document.fonts.load('400 28px "Noto Sans TC"'),
+    document.fonts.load('700 28px "Noto Sans TC"'),
+    document.fonts.load('700 56px "Noto Serif TC"', titleText || '醫療生技資訊'),
+    document.fonts.load('700 52px "Noto Serif TC"', titleText || '醫療生技資訊'),
     logoReady,
   ]);
+
+  if (probe) document.body.removeChild(probe);
 }
 
 
@@ -1144,8 +1155,8 @@ async function generateJpeg() {
    全文版 JPEG（動態高度）
    ════════════════════════════════════════════════════════════════════ */
 async function generateFullJpeg() {
-  await loadCanvasFonts();
   const d = getData();
+  await loadCanvasFonts(d.titleZh);
   const HDR = 96, FTR = 80;
   const TITLE_SZ = 56, TITLE_LH = 72;
   const ABST_SZ  = 28, ABST_LH  = 44;
@@ -1283,8 +1294,8 @@ async function generateFullJpeg() {
    摘要字卡 JPEG（LINE 短格式，縮圖即可看完）
    ════════════════════════════════════════════════════════════════════ */
 async function generateSummaryJpeg() {
-  await loadCanvasFonts();
   const d  = getData();
+  await loadCanvasFonts(d.titleZh);
   const SW = 1080, SM = 72, cw = SW - SM * 2;
   const HDR = 110, FTR = 70, CIRC_D = 44;
 
