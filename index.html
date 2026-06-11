@@ -284,7 +284,8 @@ input[type="text"].field { min-height: 38px; }
 .preview-wrap { max-width: 1400px; margin: 0 auto; padding: 0 24px 32px; }
 #previewSection { display: none; }
 #previewSection.show { display: block; }
-.preview-dual { display: grid; grid-template-columns: 1fr; gap: 20px; }
+.preview-dual { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .preview-dual { grid-template-columns: 1fr; } }
 
 .preview-card {
   background: var(--white);
