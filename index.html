@@ -6,7 +6,7 @@
 <title>文章分享｜木木人 AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+Thai:wght@400;500;700&family=Noto+Sans+Myanmar:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=Noto+Sans+Lao:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -308,7 +308,15 @@ input[type="text"].field { min-height: 38px; }
 canvas { display: none; }
 
 /* ── 多語言 ── */
-#langPicker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+#langPicker { display: flex; flex-wrap: wrap; gap: 8px; }
+.translate-row {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap;
+  padding: 14px; margin-bottom: 16px;
+  background: var(--cream); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.translate-hint { font-size: 12px; color: var(--sage); margin-bottom: 8px; }
+.translate-row .btn { white-space: nowrap; }
 .lang-chk {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 12px; border: 1px solid var(--border); border-radius: 100px;
@@ -548,9 +556,6 @@ canvas { display: none; }
       </div>
       <div id="imageThumbs"></div>
 
-      <label class="field-label" style="margin-top:14px;">產出語言（每張卡都會附英文對照）</label>
-      <div id="langPicker"></div>
-
       <button id="analyzeBtn" onclick="analyzeContent()" disabled>
         <div class="spinner" id="spinner"></div>
         <span id="analyzeBtnText">AI 自動解析</span>
@@ -569,6 +574,14 @@ canvas { display: none; }
       <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
 
       <div id="langTabs" class="lang-tabs"></div>
+
+      <div class="translate-row">
+        <div>
+          <div class="translate-hint">其他語言（每張卡都會附英文對照）</div>
+          <div id="langPicker"></div>
+        </div>
+        <button id="translateBtn" class="btn btn-gold" onclick="translateLangs()" disabled>🌏 產生其他語言</button>
+      </div>
 
       <div class="field-row">
         <label class="field-label" id="lbl_title">中文標題</label>
@@ -830,8 +843,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=4"></script>
-<script src="card-renderer.js?v=4"></script>
+<script src="config.js?v=5"></script>
+<script src="card-renderer.js?v=5"></script>
 <script>
 'use strict';
 
@@ -843,15 +856,23 @@ let _imgSeq            = 0;
 const MAX_IMAGES = 2;
 
 /* ════════════════════ 多語言 ════════════════════ */
+// tab 顯示一律用中文短名。刻意不用 ISO 代碼——緬甸語的代碼是 my，
+// 跟馬來西亞的國碼 MY 長得一樣；高棉語是 km，跟葛摩國碼 KM 一樣，並排會看錯。
+// 內部代碼仍維持 ISO 639-1 標準（送進 prompt 與檔名用）。
 const LANG_META = {
-  zh: { label:'中文',  tab:'中',  name:'繁體中文' },
-  en: { label:'英文',  tab:'EN',  name:'英文' },
-  vi: { label:'越南文', tab:'VI', name:'越南文' },
-  id: { label:'印尼文', tab:'ID', name:'印尼文' },
-  ja: { label:'日文',  tab:'JA',  name:'日文' },
-  th: { label:'泰文',  tab:'TH',  name:'泰文', fontNote:'需 Noto Sans Thai' },
+  zh: { label:'中文',   tab:'中',   name:'繁體中文' },
+  en: { label:'英文',   tab:'英',   name:'英文' },
+  vi: { label:'越南文', tab:'越',   name:'越南文' },
+  id: { label:'印尼文', tab:'印尼', name:'印尼文' },
+  ja: { label:'日文',   tab:'日',   name:'日文' },
+  th: { label:'泰文',   tab:'泰',   name:'泰文' },
+  ms: { label:'馬來文', tab:'馬來', name:'馬來文（馬來西亞、汶萊通用）' },
+  my: { label:'緬甸文', tab:'緬',   name:'緬甸文' },
+  lo: { label:'寮文',   tab:'寮',   name:'寮文' },
+  km: { label:'高棉文', tab:'柬',   name:'高棉文（柬埔寨）' },
 };
-const LANG_ORDER     = ['zh','en','vi','id','ja','th'];
+const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km'];
+const PHASE1_LANGS   = ['zh','en'];      // Step 1 固定產出，中文卡的英文對照需要它
 const LANG_STORE_KEY = 'academic_share_langs';
 
 let langData    = {};       // { zh:{title,editorial,keyPoints,abstract}, en:{…}, … }
@@ -861,7 +882,7 @@ const EMPTY_LANG = () => ({ title:'', editorial:'', keyPoints:[], abstract:'' })
 
 function selectedLangs() {
   return LANG_ORDER.filter(c => {
-    if (c === 'zh') return true;                       // 中文恆選
+    if (PHASE1_LANGS.includes(c)) return true;         // 中文與英文由 Step 1 固定產出
     const el = document.getElementById('lang_' + c);
     return el ? el.checked : false;
   });
@@ -875,8 +896,10 @@ function renderLangPicker() {
   const on = Array.isArray(saved) ? saved : ['zh','en'];
   wrap.innerHTML = LANG_ORDER.map(c => {
     const m = LANG_META[c];
-    if (c === 'zh') return `<label class="lang-chk on locked"><input type="checkbox" checked disabled>中文</label>`;
-    return `<label class="lang-chk${on.includes(c) ? ' on' : ''}${m.fontNote ? ' warn-font' : ''}" id="chk_${c}" title="${m.fontNote || ''}">`
+    if (PHASE1_LANGS.includes(c)) {
+      return `<label class="lang-chk on locked" title="Step 1 固定產出"><input type="checkbox" checked disabled>${m.label}</label>`;
+    }
+    return `<label class="lang-chk${on.includes(c) ? ' on' : ''}" id="chk_${c}">`
          + `<input type="checkbox" id="lang_${c}"${on.includes(c) ? ' checked' : ''} onchange="onLangToggle('${c}')">${m.label}</label>`;
   }).join('');
 }
@@ -886,6 +909,7 @@ function onLangToggle(code) {
   const box = document.getElementById('chk_' + code);
   if (box) box.classList.toggle('on', el.checked);
   try { localStorage.setItem(LANG_STORE_KEY, JSON.stringify(selectedLangs())); } catch {}
+  updateTranslateBtn();
 }
 
 function renderLangTabs() {
@@ -929,6 +953,107 @@ function switchLang(code) {
   renderLangTabs();
   // 預覽已開著就跟著換語言重繪
   if (document.getElementById('previewSection').classList.contains('show')) generateJpeg();
+}
+
+let lastSource = { text: '', imgs: [] };   // Step 1 用過的原文，供 Step 2 重跑
+
+/* Step 2：把 Step 1 的結果翻成其他語言。
+   每個語言各發一次請求並行跑，總時間等於最慢的那一個，不隨語言數增加。
+   關鍵：每次都重新送出【原文】，不是拿中文版去轉譯——
+   從中文再翻一次會走味，那正是林董一開始要避免的。 */
+async function translateLangs() {
+  const codes = selectedLangs().filter(c => !PHASE1_LANGS.includes(c));
+  if (codes.length === 0) { showStatus('沒有勾選其他語言', 'info'); return; }
+  if (!langData.en || !(langData.en.keyPoints || []).length) {
+    showStatus('請先完成 Step 1 解析', 'err'); return;
+  }
+  if (!lastSource.text && lastSource.imgs.length === 0) {
+    showStatus('找不到原文，請重新解析一次', 'err'); return;
+  }
+
+  const btn = document.getElementById('translateBtn');
+  btn.disabled = true;
+  saveCurrentLang();
+
+  const tmpl = JSON.stringify({
+    title:     langData.en.title,
+    editorial: langData.en.editorial,
+    keyPoints: langData.en.keyPoints,
+    abstract:  langData.en.abstract,
+  }, null, 1);
+
+  let done = 0;
+  const tick = () => setProgress(Math.round(++done / codes.length * 95),
+                                 `翻譯中… ${done}/${codes.length}`);
+  setProgress(5, `翻譯中… 0/${codes.length}`);
+
+  const one = async (code) => {
+    const meta = LANG_META[code];
+    const content = [];
+    lastSource.imgs.forEach(im => content.push({
+      type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.base64 },
+    }));
+    content.push({ type: 'text', text:
+`請把這篇文章整理成${meta.name}版本。
+
+【最重要】必須【直接從下方原文】翻譯，不可從英文或中文版轉譯——轉兩手會走味。
+英文版結構只用來對齊：keyPoints 的條數與順序必須與它一一對應。
+醫學專有名詞（藥名、基因名、疾病名、檢驗項目、儀器與技術名稱）一律保留英文原文不翻譯。
+
+只輸出 JSON，不加任何說明或 markdown：
+{
+  "title":     "${meta.name}標題",
+  "editorial": "核心發現一句話",
+  "keyPoints": ["對應英文版每一條，順序一致"],
+  "abstract":  "文章摘要"
+}
+
+【英文版結構，僅供對齊條數與順序】
+${tmpl}
+${lastSource.text ? '\n【原文】\n' + lastSource.text : '\n（原文為截圖，請直接判讀上方圖片）'}` });
+
+    const txt = await callClaude({
+      system:  '你是醫療生技資訊翻譯助手。只輸出 JSON，不要加任何說明。',
+      content,
+      // 高棉文、寮文在 tokenizer 裡極度耗 token，實測單一語言可達 75 秒，
+      // 逾時必須放寬，否則會誤判成失敗（實際只是還沒寫完）。
+      maxTokens: 16000,
+      timeoutMs: 180000,
+    });
+    const obj = parseJsonLoose(txt);
+    if (!obj) throw new Error('回應不是有效 JSON');
+    return {
+      title:     obj.title     || '',
+      editorial: obj.editorial || '',
+      abstract:  obj.abstract  || '',
+      keyPoints: Array.isArray(obj.keyPoints) ? obj.keyPoints : [],
+    };
+  };
+
+  const settled = await Promise.allSettled(codes.map(c => one(c).finally(tick)));
+
+  const failed = [];
+  settled.forEach((r, i) => {
+    if (r.status === 'fulfilled') langData[codes[i]] = r.value;
+    else failed.push(`${LANG_META[codes[i]].label}（${r.reason?.message || r.reason}）`);
+  });
+
+  renderLangTabs();
+  setProgress(100, '翻譯完成 ✓');
+  setTimeout(() => setProgress(0, ''), 2000);
+  const okCount = codes.length - failed.length;
+  showStatus(failed.length
+    ? `完成 ${okCount}/${codes.length} 種，失敗：${failed.join('、')}`
+    : `${okCount} 種語言已產出 ✓`, failed.length ? 'err' : 'ok');
+  btn.disabled = false;
+}
+
+function updateTranslateBtn() {
+  const btn = document.getElementById('translateBtn');
+  if (!btn) return;
+  const n = selectedLangs().filter(c => !PHASE1_LANGS.includes(c)).length;
+  btn.disabled = !(langData.en && (langData.en.keyPoints || []).length) || n === 0;
+  btn.textContent = n > 0 ? `🌏 產生其他語言（${n} 種）` : '🌏 產生其他語言';
 }
 
 /* 解析完成後把 i18n 收進 langData */
@@ -1067,7 +1192,7 @@ function buildPrompt() {
   const rawText = document.getElementById('rawText').value.trim();
 
   // ── 多語言：依勾選的語言組出 i18n 規格與翻譯規則 ──
-  const extra = selectedLangs().filter(c => c !== 'zh');
+  const extra = PHASE1_LANGS.filter(c => c !== 'zh');   // Step 1 固定只做英文，其餘語言在 Step 2 並行產出
   const langSpec = extra.length === 0 ? '' :
     ',\n  "i18n": {\n' +
     extra.map(c => `    "${c}": { "title": "${LANG_META[c].name}標題", "editorial": "核心發現一句話", "keyPoints": ["對應 zh 的每一條，順序一致"], "abstract": "文章摘要" }`).join(',\n') +
@@ -1125,55 +1250,81 @@ function tryFill(buffer) {
   setProgress(pct, filled > 0 ? `已填入 ${filled} 個欄位…` : '解析中…');
 }
 
+/* 呼叫 Claude 代理並消化 SSE 串流，回傳完整文字。
+   Step 1 與 Step 2 共用。onDelta 可選，用來邊收邊填欄位。 */
+async function callClaude({ system, content, maxTokens = 16000, onDelta, timeoutMs = 120000 }) {
+  const url = (typeof CONFIG !== 'undefined' && CONFIG.CLAUDE_PROXY_URL)
+    ? CONFIG.CLAUDE_PROXY_URL : '/api/claude';
+
+  const resp = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal:  AbortSignal.timeout(timeoutMs),
+    body:    JSON.stringify({
+      max_tokens: maxTokens,
+      stream:     true,
+      system,
+      messages:   [{ role: 'user', content }],
+    }),
+  });
+  if (!resp.ok) throw new Error(`API ${resp.status}: ${await resp.text()}`);
+
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', full = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split('\n'); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data:')) continue;
+      const raw = line.slice(5).trim();
+      if (raw === '[DONE]') continue;
+      try {
+        const evt = JSON.parse(raw);
+        if (evt.type === 'content_block_delta' && evt.delta?.text) {
+          full += evt.delta.text;
+          if (onDelta) onDelta(full);
+        }
+      } catch {}
+    }
+  }
+  return full;
+}
+
+/* 從模型回應中挖出 JSON（容忍 markdown 圍欄與前後贅字）*/
+function parseJsonLoose(text) {
+  const t = text.trim().replace(/^```(?:json)?/, '').replace(/```$/, '').trim();
+  const a = t.indexOf('{'), b = t.lastIndexOf('}');
+  if (a < 0 || b <= a) return null;
+  try { return JSON.parse(t.slice(a, b + 1)); } catch { return null; }
+}
+
 async function analyzeContent() {
   if (!document.getElementById('rawText').value.trim() && images.length === 0) return;
   setAnalyzing(true);
   setSkeleton(true);
   setProgress(5, '連接 Claude API…');
   try {
-    // 一律走伺服器端代理，瀏覽器永遠不持有 API key。
-    // 本機開發時 CONFIG.CLAUDE_PROXY_URL 指向已部署的端點。
-    const claudeUrl = (typeof CONFIG !== 'undefined' && CONFIG.CLAUDE_PROXY_URL)
-      ? CONFIG.CLAUDE_PROXY_URL : '/api/claude';
-    const claudeHeaders = { 'Content-Type': 'application/json' };
+    // 保存原文與截圖，Step 2 的翻譯要重新拿原文跑（不從中文轉譯）
+    lastSource = {
+      text: document.getElementById('rawText').value.trim(),
+      imgs: images.map(i => ({ base64: i.base64, mediaType: i.mediaType })),
+    };
 
-    const resp = await fetch(claudeUrl, {
-      method: 'POST',
-      headers: claudeHeaders,
-      body: JSON.stringify({
-        model:      'claude-sonnet-5',
-        max_tokens: 16000,
-        stream:     true,
-        system:     '你是醫療生技資訊整理助手。請萃取關鍵資訊並以繁體中文整理。只輸出 JSON，不要加任何說明。',
-        messages:   [{ role: 'user', content: buildPrompt() }]
-      })
+    const full = await callClaude({
+      system:  '你是醫療生技資訊整理助手。請萃取關鍵資訊並以繁體中文整理。只輸出 JSON，不要加任何說明。',
+      content: buildPrompt(),
+      onDelta: tryFill,
     });
 
-    if (!resp.ok) throw new Error(`API ${resp.status}: ${await resp.text()}`);
-
-    const reader = resp.body.getReader();
-    const dec = new TextDecoder();
-    let buf = '', full = '';
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      const lines = buf.split('\n'); buf = lines.pop();
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const raw = line.slice(5).trim();
-        if (raw === '[DONE]') continue;
-        try {
-          const evt = JSON.parse(raw);
-          if (evt.type === 'content_block_delta' && evt.delta?.text) { full += evt.delta.text; tryFill(full); }
-        } catch {}
-      }
-    }
     tryFill(full);
-    const nLang = absorbI18n(full);
+    absorbI18n(full);
     setSkeleton(false);
-    setProgress(100, nLang > 0 ? `解析完成 ✓（含 ${nLang} 種外語）` : '解析完成 ✓');
+    setProgress(100, '解析完成 ✓（中文＋英文）');
     setTimeout(() => setProgress(0, ''), 2000);
+    updateTranslateBtn();
   } catch (e) {
     setSkeleton(false);
     setProgress(0, '');
@@ -1461,7 +1612,7 @@ function clearAll() {
   renderThumbs();
   ['f_titleZh','f_titleOrig','f_source','f_date','f_abstract','f_url','f_keyPoints','f_editorial']
     .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  langData = {}; currentLang = 'zh'; renderLangTabs();
+  langData = {}; currentLang = 'zh'; lastSource = { text: '', imgs: [] }; renderLangTabs(); updateTranslateBtn();
   const lbl0 = document.getElementById('lbl_title'); if (lbl0) lbl0.textContent = '中文標題';
   jpegDataUrlSummary = null; jpegDataUrlFull = null;
   document.getElementById('previewSection').classList.remove('show');
@@ -1573,6 +1724,7 @@ function switchTab(name) {
 // Init
 renderLangPicker();
 renderLangTabs();
+updateTranslateBtn();
 updateHistoryBadge();
 updateAnalyzeBtn();
 </script>

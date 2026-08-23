@@ -41,10 +41,23 @@ const C = {
 
 /* ── 語言 → 字型家族 ── */
 let ACTIVE_LANG = 'zh';
-const THAI_SANS  = '"Noto Sans Thai", "Noto Sans TC", sans-serif';
-const THAI_SERIF = '"Noto Sans Thai", "Noto Serif TC", serif';
-function famSans()  { return ACTIVE_LANG === 'th' ? THAI_SANS  : '"Noto Sans TC", sans-serif'; }
-function famSerif() { return ACTIVE_LANG === 'th' ? THAI_SERIF : '"Noto Serif TC", serif'; }
+
+/* 非拉丁／非漢字的文字系統各需一套字型。
+   缺字時 canvas 不會拋錯，會靜默畫出豆腐塊，所以這張表必須完整。 */
+const SCRIPT_FONT = {
+  th: 'Noto Sans Thai',      // 泰文
+  my: 'Noto Sans Myanmar',   // 緬甸文（注意：my 是「緬甸語」的 ISO 代碼，不是馬來西亞）
+  km: 'Noto Sans Khmer',     // 高棉文
+  lo: 'Noto Sans Lao',       // 寮文
+};
+function famSans() {
+  const f = SCRIPT_FONT[ACTIVE_LANG];
+  return f ? `"${f}", "Noto Sans TC", sans-serif` : '"Noto Sans TC", sans-serif';
+}
+function famSerif() {
+  const f = SCRIPT_FONT[ACTIVE_LANG];
+  return f ? `"${f}", "Noto Serif TC", serif` : '"Noto Serif TC", serif';
+}
 function fs(weight, size, serif) { return `${weight} ${size}px ${serif ? famSerif() : famSans()}`; }
 
 /* ── 卡片外框文字：中文卡用中文，其餘語言一律英文 ── */
@@ -66,8 +79,9 @@ function allTextOf(d) {
 
 async function loadCanvasFonts(sampleText = '', lang = 'zh') {
   ACTIVE_LANG = lang;
-  const sans  = lang === 'th' ? '"Noto Sans Thai"' : '"Noto Sans TC"';
-  const serif = lang === 'th' ? '"Noto Sans Thai"' : '"Noto Serif TC"';
+  const script = SCRIPT_FONT[lang];
+  const sans   = script ? `"${script}"` : '"Noto Sans TC"';
+  const serif  = script ? `"${script}"` : '"Noto Serif TC"';
   // 關鍵：Google Fonts 的 CJK／泰文是分片下載的，必須帶著實際文字才會拉到正確分片，
   // 否則 canvas 會靜默畫出豆腐塊（不會拋錯）。
   const t = (sampleText || '') + '醫療生技資訊重點摘要文章日期木木人分享'
@@ -92,17 +106,30 @@ function font(ctx, size, bold=false, serif=false) {
   ctx.font = fs(bold ? 700 : 400, size, serif);
 }
 
+/* 以「使用者看到的一個字」為單位切分。
+   泰文、寮文、高棉文、緬甸文的母音與聲調符號是獨立的碼位，
+   若逐碼位切分，斷行會把符號從基底字上切下來，畫出破字。
+   實測：緬甸文 15 個字會被切成 23 段、高棉文 9 個字切成 20 段。 */
+const _seg = (typeof Intl !== 'undefined' && Intl.Segmenter)
+  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+  : null;
+
+function graphemes(text) {
+  return _seg ? [..._seg.segment(text)].map(x => x.segment) : [...text];
+}
+
 function wrap(ctx, text, maxW) {
   if (!text) return [];
+  const g = graphemes(text);
   const lines = [];
   let cur = '';
   let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    if (/[A-Za-z0-9]/.test(ch)) {
+  while (i < g.length) {
+    const ch = g[i];
+    if (/^[A-Za-z0-9]$/.test(ch)) {
       // 英文單字（含連字號、縮寫點）視為不可拆分單位
       let word = '';
-      while (i < text.length && /[A-Za-z0-9\-_'.]/.test(text[i])) word += text[i++];
+      while (i < g.length && /^[A-Za-z0-9\-_'.]$/.test(g[i])) word += g[i++];
       const test = cur + word;
       if (ctx.measureText(test).width <= maxW) {
         cur = test;
@@ -111,7 +138,7 @@ function wrap(ctx, text, maxW) {
         cur = word;
       }
     } else {
-      // 中文字、標點、空格：逐個處理
+      // 中文字、東南亞文字、標點、空格：逐字處理
       const test = cur + ch;
       if (ctx.measureText(test).width > maxW && cur) {
         lines.push(cur);
