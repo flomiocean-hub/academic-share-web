@@ -327,6 +327,8 @@ canvas { display: none; }
 .lang-chk input { accent-color: var(--gold); cursor: pointer; }
 .lang-chk.on { background: rgba(201,168,76,0.12); border-color: var(--gold); font-weight: 500; }
 .lang-chk.locked { opacity: .55; cursor: default; }
+.lang-note { font-size: 11px; color: var(--sage); margin-left: 3px; font-weight: 400; }
+.lang-chk.on .lang-note { color: #8A7A50; }
 .lang-chk.warn-font { border-style: dashed; }
 
 .lang-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -843,8 +845,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=5"></script>
-<script src="card-renderer.js?v=5"></script>
+<script src="config.js?v=6"></script>
+<script src="card-renderer.js?v=6"></script>
 <script>
 'use strict';
 
@@ -866,10 +868,10 @@ const LANG_META = {
   id: { label:'印尼文', tab:'印尼', name:'印尼文' },
   ja: { label:'日文',   tab:'日',   name:'日文' },
   th: { label:'泰文',   tab:'泰',   name:'泰文' },
-  ms: { label:'馬來文', tab:'馬來', name:'馬來文（馬來西亞、汶萊通用）' },
+  ms: { label:'馬來文', tab:'馬來', note:'馬來西亞、汶萊', name:'馬來文（馬來西亞、汶萊通用）' },
   my: { label:'緬甸文', tab:'緬',   name:'緬甸文' },
   lo: { label:'寮文',   tab:'寮',   name:'寮文' },
-  km: { label:'高棉文', tab:'柬',   name:'高棉文（柬埔寨）' },
+  km: { label:'高棉文', tab:'柬',   note:'柬埔寨',        name:'高棉文（柬埔寨）' },
 };
 const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km'];
 const PHASE1_LANGS   = ['zh','en'];      // Step 1 固定產出，中文卡的英文對照需要它
@@ -899,8 +901,9 @@ function renderLangPicker() {
     if (PHASE1_LANGS.includes(c)) {
       return `<label class="lang-chk on locked" title="Step 1 固定產出"><input type="checkbox" checked disabled>${m.label}</label>`;
     }
+    const note = m.note ? `<span class="lang-note">${m.note}</span>` : '';
     return `<label class="lang-chk${on.includes(c) ? ' on' : ''}" id="chk_${c}">`
-         + `<input type="checkbox" id="lang_${c}"${on.includes(c) ? ' checked' : ''} onchange="onLangToggle('${c}')">${m.label}</label>`;
+         + `<input type="checkbox" id="lang_${c}"${on.includes(c) ? ' checked' : ''} onchange="onLangToggle('${c}')">${m.label}${note}</label>`;
   }).join('');
 }
 
