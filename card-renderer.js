@@ -47,6 +47,15 @@ function famSans()  { return ACTIVE_LANG === 'th' ? THAI_SANS  : '"Noto Sans TC"
 function famSerif() { return ACTIVE_LANG === 'th' ? THAI_SERIF : '"Noto Serif TC", serif'; }
 function fs(weight, size, serif) { return `${weight} ${size}px ${serif ? famSerif() : famSans()}`; }
 
+/* ── 卡片外框文字：中文卡用中文，其餘語言一律英文 ── */
+const CHROME = {
+  zh: { date:'文章日期：', kicker:'醫療生技資訊',   pill:'重點摘要', brand:'木木人 分享',
+        srcFallback:'木木人分享', noTitle:'（無標題）' },
+  en: { date:'Published: ', kicker:'Medical & Biotech', pill:'Key Points', brand:'MuMuRen Share',
+        srcFallback:'MuMuRen Share', noTitle:'(Untitled)' },
+};
+function chrome() { return ACTIVE_LANG === 'zh' ? CHROME.zh : CHROME.en; }
+
 /* 這張卡會用到的所有文字 — 用來觸發 Google Fonts 正確分片下載 */
 function allTextOf(d) {
   const parts = [d.titleZh, d.titleOrig, d.source, d.date, d.abstract, d.editorial,
@@ -61,7 +70,8 @@ async function loadCanvasFonts(sampleText = '', lang = 'zh') {
   const serif = lang === 'th' ? '"Noto Sans Thai"' : '"Noto Serif TC"';
   // 關鍵：Google Fonts 的 CJK／泰文是分片下載的，必須帶著實際文字才會拉到正確分片，
   // 否則 canvas 會靜默畫出豆腐塊（不會拋錯）。
-  const t = (sampleText || '') + '醫療生技資訊重點摘要文章日期木木人分享';
+  const t = (sampleText || '') + '醫療生技資訊重點摘要文章日期木木人分享'
+          + 'Published Medical & Biotech Key Points MuMuRen Share Untitled';
   await Promise.all([
     document.fonts.load(`400 17px ${sans}`, t),
     document.fonts.load(`400 20px ${sans}`, t),
@@ -147,7 +157,7 @@ function drawText(ctx, text, x, y, maxW, size, color, bold=false, lhMult=1.65) {
    ════════════════════════════════════════════════════════════════════ */
 async function renderFull(d, imgs) {
   imgs = imgs || [];
-  await loadCanvasFonts(d.titleZh);
+  await loadCanvasFonts(allTextOf(d), d.lang || 'zh');
   const HDR = 96, FTR = 80;
   const TITLE_SZ = 56, TITLE_LH = 72;
   const ABST_SZ  = 28, ABST_LH  = 44;
@@ -159,7 +169,7 @@ async function renderFull(d, imgs) {
   const tc  = tmp.getContext('2d');
   const wt  = (text, maxW, fStr) => { tc.font = fStr; return wrap(tc, text, maxW); };
 
-  const titleLines = wt(d.titleZh || '（無標題）',                         CW_INNER, fs(700, TITLE_SZ, true));
+  const titleLines = wt(d.titleZh || chrome().noTitle,                     CW_INNER, fs(700, TITLE_SZ, true));
   const subTitleF  = (d.en && d.en.title) ? d.en.title : d.titleOrig;
   const enLines    = (subTitleF && subTitleF !== d.titleZh)
                        ? wt(subTitleF, CW_INNER, fs(400, EN_SZ, false)) : [];
@@ -210,16 +220,16 @@ async function renderFull(d, imgs) {
 
   font(ctx, 22, true);
   ctx.fillStyle = C.gold;
-  ctx.fillText((d.source || '木木人分享').toUpperCase(), MX, 42);
+  ctx.fillText((d.source || chrome().srcFallback).toUpperCase(), MX, 42);
 
   if (d.date) {
     font(ctx, 18, false); ctx.fillStyle = '#8A8AB0';
-    const label = '文章日期：' + d.date;
+    const label = chrome().date + d.date;
     ctx.fillText(label, CW - MX - ctx.measureText(label).width, 42);
   }
 
   font(ctx, 16, false); ctx.fillStyle = C.rule;
-  ctx.fillText('醫療生技資訊', MX, 72);
+  ctx.fillText(chrome().kicker, MX, 72);
 
   // Title
   let y = HDR + 108;
@@ -281,7 +291,7 @@ async function renderFull(d, imgs) {
     ctx.fillText(du, MX, fy + 28);
   }
 
-  const _mumuTxt1 = '木木人 分享';
+  const _mumuTxt1 = chrome().brand;
   font(ctx, 14, false); ctx.fillStyle = '#C9A84C';
   ctx.fillText(_mumuTxt1, CW - MX - LOGO_W - 18 - ctx.measureText(_mumuTxt1).width, fy + Math.round(FTR / 2) + 6);
   ctx.save(); ctx.filter = 'brightness(1.25) saturate(1.1)';
@@ -302,7 +312,7 @@ async function renderFull(d, imgs) {
    ════════════════════════════════════════════════════════════════════ */
 async function renderSummary(d, imgs) {
   imgs = imgs || [];
-  await loadCanvasFonts(d.titleZh);
+  await loadCanvasFonts(allTextOf(d), d.lang || 'zh');
   const SW = 1080, SM = 72, cw = SW - SM * 2;
   const HDR = 110, FTR = 70, CIRC_D = 44;
 
@@ -325,7 +335,7 @@ async function renderSummary(d, imgs) {
   const F_PT    = fs(400, 28, false);
   const F_SMALL = fs(400, 17, false);
 
-  const titleLines = wt(d.titleZh || '（無標題）', cw, F_TITLE);
+  const titleLines = wt(d.titleZh || chrome().noTitle, cw, F_TITLE);
   const subTitle   = (d.en && d.en.title) ? d.en.title : d.titleOrig;
   const enLines    = (subTitle && subTitle !== d.titleZh) ? wt(subTitle, cw, F_EN) : [];
   const points     = (d.keyPoints || []).slice(0, 5);
@@ -381,18 +391,18 @@ async function renderSummary(d, imgs) {
 
   ctx.font = fs(700, 26, false);
   ctx.fillStyle = F.white;
-  ctx.fillText(d.source || 'Academic Share', SM, 44);
+  ctx.fillText(d.source || chrome().srcFallback, SM, 44);
 
   if (d.date) {
     ctx.font = F_SMALL; ctx.fillStyle = F.ftxt;
-    ctx.fillText('文章日期：' + d.date, SM, 78);
+    ctx.fillText(chrome().date + d.date, SM, 78);
   }
 
   let y = HDR + 28;
 
   // "重點摘要" pill (rounded rect via arc)
   ctx.font = fs(700, 20, false);
-  const tagText = '重點摘要';
+  const tagText = chrome().pill;
   const tagTW   = ctx.measureText(tagText).width + 36;
   const tagH    = 38, tr = 19;
   ctx.fillStyle = F.gold;
@@ -493,7 +503,7 @@ async function renderSummary(d, imgs) {
     ctx.fillText(du, SM, fy + 28);
   }
 
-  const _mumuTxt2 = '木木人 分享';
+  const _mumuTxt2 = chrome().brand;
   ctx.font = fs(500, 14, false); ctx.fillStyle = '#C9A84C';
   ctx.fillText(_mumuTxt2, SW - SM - LOGO_W - 18 - ctx.measureText(_mumuTxt2).width, fy + Math.round(FTR / 2) + 6);
   ctx.save(); ctx.filter = 'brightness(1.25) saturate(1.1)';
