@@ -16,3 +16,5 @@ secrets/
 *.step*-pre
 _*.html
 _*.js
+.env*
+node_modules/

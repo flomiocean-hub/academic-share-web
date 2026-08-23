@@ -1,0 +1,9 @@
+{
+  "name": "academic-share-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "木木人分享 — 醫療生技文章字卡產生與 LINE 推播",
+  "dependencies": {
+    "@vercel/blob": "^2.8.0"
+  }
+}

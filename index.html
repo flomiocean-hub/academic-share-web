@@ -1365,6 +1365,7 @@ async function sendToLine() {
     const resp = await fetch(getLineProxyUrl(), {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal:  AbortSignal.timeout(45000),   // 逾時就明確失敗，不要無限轉圈
       body:    JSON.stringify({
         imageSummaryBase64: jpegDataUrlSummary.split(',')[1],
         imageFullBase64:    jpegDataUrlFull.split(',')[1],
@@ -1387,7 +1388,10 @@ async function sendToLine() {
     showStatus('已成功傳送至 LINE ✓', 'ok');
     saveHistory(getData(), result.imageUrl);
   } catch (e) {
-    showStatus('傳送失敗：' + e.message, 'err');
+    const msg = e.name === 'TimeoutError'
+      ? '傳送逾時（45 秒）。可改用下載後手動拖曳進 LINE。'
+      : e.message;
+    showStatus('傳送失敗：' + msg, 'err');
     console.error(e);
   } finally {
     document.getElementById('sendLineBtn').disabled = false;
