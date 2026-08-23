@@ -845,8 +845,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=6"></script>
-<script src="card-renderer.js?v=6"></script>
+<script src="config.js?v=7"></script>
+<script src="card-renderer.js?v=7"></script>
 <script>
 'use strict';
 
@@ -901,7 +901,7 @@ function renderLangPicker() {
     if (PHASE1_LANGS.includes(c)) {
       return `<label class="lang-chk on locked" title="Step 1 固定產出"><input type="checkbox" checked disabled>${m.label}</label>`;
     }
-    const note = m.note ? `<span class="lang-note">${m.note}</span>` : '';
+    const note = m.note ? `<span class="lang-note">（${m.note}）</span>` : '';
     return `<label class="lang-chk${on.includes(c) ? ' on' : ''}" id="chk_${c}">`
          + `<input type="checkbox" id="lang_${c}"${on.includes(c) ? ' checked' : ''} onchange="onLangToggle('${c}')">${m.label}${note}</label>`;
   }).join('');
