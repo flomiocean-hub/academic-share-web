@@ -1,3 +1,18 @@
+# 機密 — 絕不進版控
 config.js
+.env
+.env.*
+!.env.example
+secrets/
+*.key
+*.pem
+
+# 系統與工具
 .DS_Store
 .vercel
+
+# 備份與測試暫存
+*.bak-*
+*.step*-pre
+_*.html
+_*.js

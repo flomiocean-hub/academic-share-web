@@ -1,2 +1,6 @@
 data/
 config.js
+*.bak-*
+*.step*-pre
+_*.html
+_*.js
