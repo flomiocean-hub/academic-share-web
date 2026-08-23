@@ -57,6 +57,20 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // ── 暫時：只驗證 Blob 上傳，完全不碰 LINE（驗證完即移除）──
+  if (req.body && req.body._blobselftest) {
+    try {
+      const px = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+      const t0 = Date.now();
+      const u1 = await uploadCard(px, 'image/png', 'selftest-a');
+      const t1 = Date.now();
+      const u2 = await uploadCard(px, 'image/png', 'selftest-b');
+      return res.status(200).json({ ok: true, ms: [t1 - t0, Date.now() - t1], urls: [u1, u2] });
+    } catch (e) {
+      return res.status(500).json({ error: 'blob selftest failed: ' + e.message });
+    }
+  }
+
   const lineToken  = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const lineUserId = process.env.LINE_TARGET_USER_ID;
   if (!lineToken || !lineUserId) {
