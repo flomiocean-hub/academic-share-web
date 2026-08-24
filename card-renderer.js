@@ -49,7 +49,23 @@ const SCRIPT_FONT = {
   my: 'Noto Sans Myanmar',   // 緬甸文（注意：my 是「緬甸語」的 ISO 代碼，不是馬來西亞）
   km: 'Noto Sans Khmer',     // 高棉文
   lo: 'Noto Sans Lao',       // 寮文
+  mn: 'Noto Sans',           // 蒙古文（西里爾字母；Noto Sans 含 cyrillic 子集）
+  bo: 'Noto Serif Tibetan',  // 藏文（Google Fonts 沒有 Noto Sans Tibetan）
+  ug: 'Noto Sans Arabic',    // 維吾爾文（阿拉伯字母，右至左）
 };
+
+/* 右至左書寫的語言。版面需要整體鏡射，不只是換字型。 */
+const RTL_LANGS = new Set(['ug']);
+function isRtl() { return RTL_LANGS.has(ACTIVE_LANG); }
+
+/* 版面鏡射工具。
+   LTR 時每個函式都回傳原值、textAlign 維持 left/right，
+   所以既有 15 種語言的輸出保證完全不變（已用逐像素比對驗證）。 */
+function alignStart(ctx) { ctx.textAlign = isRtl() ? 'right' : 'left'; }
+function alignEnd(ctx)   { ctx.textAlign = isRtl() ? 'left'  : 'right'; }
+function sx(x, W)        { return isRtl() ? (W - x) : x; }        // 內文起始側的文字錨點
+function ex(x, W)        { return isRtl() ? x : (W - x); }        // 內文結束側的文字錨點
+function rectX(x, w, W)  { return isRtl() ? (W - x - w) : x; }    // 圖形元素的左緣
 function famSans() {
   const f = SCRIPT_FONT[ACTIVE_LANG];
   return f ? `"${f}", "Noto Sans TC", sans-serif` : '"Noto Sans TC", sans-serif';
@@ -247,23 +263,26 @@ async function renderFull(d, imgs) {
 
   font(ctx, 22, true);
   ctx.fillStyle = C.gold;
-  ctx.fillText((d.source || chrome().srcFallback).toUpperCase(), MX, 42);
+  alignStart(ctx);
+  ctx.fillText((d.source || chrome().srcFallback).toUpperCase(), sx(MX, CW), 42);
 
   if (d.date) {
     font(ctx, 18, false); ctx.fillStyle = '#8A8AB0';
     const label = chrome().date + d.date;
-    ctx.fillText(label, CW - MX - ctx.measureText(label).width, 42);
+    alignEnd(ctx);
+    ctx.fillText(label, ex(MX, CW), 42);
+    alignStart(ctx);
   }
 
   font(ctx, 16, false); ctx.fillStyle = C.rule;
-  ctx.fillText(chrome().kicker, MX, 72);
+  ctx.fillText(chrome().kicker, sx(MX, CW), 72);
 
   // Title
   let y = HDR + 108;
   font(ctx, TITLE_SZ, true, true);
   ctx.fillStyle = C.ink;
   for (let i = 0; i < titleLines.length; i++) {
-    ctx.fillText(titleLines[i], MX, y);
+    ctx.fillText(titleLines[i], sx(MX, CW), y);
     if (i < titleLines.length - 1) y += TITLE_LH;
   }
   y += 44;
@@ -276,23 +295,24 @@ async function renderFull(d, imgs) {
   // English subtitle
   if (enLines.length > 0) {
     font(ctx, EN_SZ, false); ctx.fillStyle = C.sage;
-    for (const ln of enLines) { ctx.fillText(ln, MX, y); y += EN_LH; }
+    for (const ln of enLines) { ctx.fillText(ln, sx(MX, CW), y); y += EN_LH; }
     y += 20;
   }
 
   // Abstract
   if (absLines.length > 0) {
     font(ctx, ABST_SZ, false); ctx.fillStyle = C.ink;
-    for (const ln of absLines) { ctx.fillText(ln, MX, y); y += ABST_LH; }
+    for (const ln of absLines) { ctx.fillText(ln, sx(MX, CW), y); y += ABST_LH; }
   }
 
   // Abstract — 英文對照
   if (enAbsLines.length > 0) {
     y += 18;
     ctx.strokeStyle = C.rule; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(MX, y - 12); ctx.lineTo(MX + 140, y - 12); ctx.stroke();
+    const dvL = rectX(MX, 140, CW);
+    ctx.beginPath(); ctx.moveTo(dvL, y - 12); ctx.lineTo(dvL + 140, y - 12); ctx.stroke();
     font(ctx, EN_ABST_SZ, false); ctx.fillStyle = C.sage;
-    for (const ln of enAbsLines) { ctx.fillText(ln, MX, y); y += EN_ABST_LH; }
+    for (const ln of enAbsLines) { ctx.fillText(ln, sx(MX, CW), y); y += EN_ABST_LH; }
     y += 16;
   }
 
@@ -302,7 +322,7 @@ async function renderFull(d, imgs) {
     const maxW = bmps.length === 2 ? Math.floor((CW_INNER - IMG_GAP) / 2) : CW_INNER;
     let x = MX;
     for (const { bmp, w, h } of bmps) {
-      ctx.drawImage(bmp, x, y, w, h);
+      ctx.drawImage(bmp, rectX(x, w, CW), y, w, h);
       x += maxW + IMG_GAP;
     }
   }
@@ -315,20 +335,23 @@ async function renderFull(d, imgs) {
   if (d.url) {
     const du = d.url.length > 72 ? d.url.slice(0, 72) + '…' : d.url;
     font(ctx, 15, false); ctx.fillStyle = C.footer;
-    ctx.fillText(du, MX, fy + 28);
+    ctx.fillText(du, sx(MX, CW), fy + 28);
   }
 
   const _mumuTxt1 = chrome().brand;
   font(ctx, 14, false); ctx.fillStyle = '#C9A84C';
-  ctx.fillText(_mumuTxt1, CW - MX - LOGO_W - 18 - ctx.measureText(_mumuTxt1).width, fy + Math.round(FTR / 2) + 6);
+  ctx.textAlign = 'left';
+  ctx.fillText(_mumuTxt1, rectX(CW - MX - LOGO_W - 18 - ctx.measureText(_mumuTxt1).width,
+                                ctx.measureText(_mumuTxt1).width, CW), fy + Math.round(FTR / 2) + 6);
+  alignStart(ctx);
   ctx.save(); ctx.filter = 'brightness(1.25) saturate(1.1)';
-  ctx.drawImage(LOGO_IMG, CW - MX - LOGO_W, fy + Math.round((FTR - LOGO_H) / 2), LOGO_W, LOGO_H);
+  ctx.drawImage(LOGO_IMG, rectX(CW - MX - LOGO_W, LOGO_W, CW), fy + Math.round((FTR - LOGO_H) / 2), LOGO_W, LOGO_H);
   ctx.restore();
 
   if (d.titleOrig) {
     font(ctx, 15, false); ctx.fillStyle = '#8A8AB0';
     const origLines = wrap(ctx, d.titleOrig, CW_INNER - 140);
-    ctx.fillText(origLines[0] + (origLines.length > 1 ? '…' : ''), MX, fy + 62);
+    ctx.fillText(origLines[0] + (origLines.length > 1 ? '…' : ''), sx(MX, CW), fy + 62);
   }
 
   return canvas;
@@ -418,11 +441,12 @@ async function renderSummary(d, imgs) {
 
   ctx.font = fs(700, 26, false);
   ctx.fillStyle = F.white;
-  ctx.fillText(d.source || chrome().srcFallback, SM, 44);
+  alignStart(ctx);
+  ctx.fillText(d.source || chrome().srcFallback, sx(SM, SW), 44);
 
   if (d.date) {
     ctx.font = F_SMALL; ctx.fillStyle = F.ftxt;
-    ctx.fillText(chrome().date + d.date, SM, 78);
+    ctx.fillText(chrome().date + d.date, sx(SM, SW), 78);
   }
 
   let y = HDR + 28;
@@ -434,20 +458,23 @@ async function renderSummary(d, imgs) {
   const tagH    = 38, tr = 19;
   ctx.fillStyle = F.gold;
   ctx.beginPath();
-  ctx.moveTo(SM + tr, y);
-  ctx.lineTo(SM + tagTW - tr, y); ctx.quadraticCurveTo(SM + tagTW, y, SM + tagTW, y + tr);
-  ctx.lineTo(SM + tagTW, y + tagH - tr); ctx.quadraticCurveTo(SM + tagTW, y + tagH, SM + tagTW - tr, y + tagH);
-  ctx.lineTo(SM + tr, y + tagH); ctx.quadraticCurveTo(SM, y + tagH, SM, y + tagH - tr);
-  ctx.lineTo(SM, y + tr); ctx.quadraticCurveTo(SM, y, SM + tr, y);
+  const pillL = rectX(SM, tagTW, SW);
+  ctx.moveTo(pillL + tr, y);
+  ctx.lineTo(pillL + tagTW - tr, y); ctx.quadraticCurveTo(pillL + tagTW, y, pillL + tagTW, y + tr);
+  ctx.lineTo(pillL + tagTW, y + tagH - tr); ctx.quadraticCurveTo(pillL + tagTW, y + tagH, pillL + tagTW - tr, y + tagH);
+  ctx.lineTo(pillL + tr, y + tagH); ctx.quadraticCurveTo(pillL, y + tagH, pillL, y + tagH - tr);
+  ctx.lineTo(pillL, y + tr); ctx.quadraticCurveTo(pillL, y, pillL + tr, y);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = F.navy;
-  ctx.fillText(tagText, SM + 18, y + 27);
+  ctx.textAlign = 'left';
+  ctx.fillText(tagText, pillL + 18, y + 27);
+  alignStart(ctx);
   y += tagH + 72;
 
   // Title
   ctx.font = F_TITLE; ctx.fillStyle = F.text;
   for (let i = 0; i < titleLines.length; i++) {
-    ctx.fillText(titleLines[i], SM, y);
+    ctx.fillText(titleLines[i], sx(SM, SW), y);
     if (i < titleLines.length - 1) y += 68;
   }
   y += 52;
@@ -455,7 +482,7 @@ async function renderSummary(d, imgs) {
   // English subtitle
   if (enLines.length > 0) {
     ctx.font = F_EN; ctx.fillStyle = F.grey;
-    for (const ln of enLines) { ctx.fillText(ln, SM, y); y += 28; }
+    for (const ln of enLines) { ctx.fillText(ln, sx(SM, SW), y); y += 28; }
     y += 14;
   }
 
@@ -470,16 +497,18 @@ async function renderSummary(d, imgs) {
     const cy  = y;
 
     ctx.fillStyle = F.navy;
-    ctx.beginPath(); ctx.arc(SM + CIRC_D/2, cy + CIRC_D/2, CIRC_D/2, 0, Math.PI*2); ctx.fill();
+    const circL = rectX(SM, CIRC_D, SW);
+    ctx.beginPath(); ctx.arc(circL + CIRC_D/2, cy + CIRC_D/2, CIRC_D/2, 0, Math.PI*2); ctx.fill();
 
     ctx.font = fs(700, 17, false);
     ctx.fillStyle = F.white;
     const ns = String(i + 1);
-    const nw = ctx.measureText(ns).width;
-    ctx.fillText(ns, SM + CIRC_D/2 - nw/2, cy + CIRC_D/2 + 7);
+    ctx.textAlign = 'center';
+    ctx.fillText(ns, circL + CIRC_D/2, cy + CIRC_D/2 + 7);
+    alignStart(ctx);
 
     ctx.font = F_PT; ctx.fillStyle = F.text;
-    const tx = SM + CIRC_D + 18;
+    const tx = sx(SM + CIRC_D + 18, SW);
     let ty = cy + 8;
     for (const ln of ptl) { ctx.fillText(ln, tx, ty + 28); ty += 38; }
 
@@ -500,10 +529,10 @@ async function renderSummary(d, imgs) {
   // Editorial quote
   if (edLines.length > 0) {
     const barH = edLines.length * 24 + 20;
-    ctx.fillStyle = F.gold; ctx.fillRect(SM, y, 3, barH);
+    ctx.fillStyle = F.gold; ctx.fillRect(rectX(SM, 3, SW), y, 3, barH);
     ctx.font = F_SMALL; ctx.fillStyle = F.grey;
     let qy = y + 14;
-    for (const ln of edLines) { ctx.fillText(ln, SM + 18, qy); qy += 24; }
+    for (const ln of edLines) { ctx.fillText(ln, sx(SM + 18, SW), qy); qy += 24; }
     y += barH + 20;
   }
 
@@ -513,7 +542,7 @@ async function renderSummary(d, imgs) {
     const maxW = sbmps.length === 2 ? Math.floor((cw - SIMG_GAP) / 2) : cw;
     let x = SM;
     for (const { bmp, w, h } of sbmps) {
-      ctx.drawImage(bmp, x, y, w, h);
+      ctx.drawImage(bmp, rectX(x, w, SW), y, w, h);
       x += maxW + SIMG_GAP;
     }
     y += sImgRowH + 24;
@@ -527,14 +556,17 @@ async function renderSummary(d, imgs) {
   if (d.url) {
     const du = d.url.length > 72 ? d.url.slice(0, 72) + '…' : d.url;
     ctx.font = F_SMALL; ctx.fillStyle = F.ftxt;
-    ctx.fillText(du, SM, fy + 28);
+    ctx.fillText(du, sx(SM, SW), fy + 28);
   }
 
   const _mumuTxt2 = chrome().brand;
   ctx.font = fs(500, 14, false); ctx.fillStyle = '#C9A84C';
-  ctx.fillText(_mumuTxt2, SW - SM - LOGO_W - 18 - ctx.measureText(_mumuTxt2).width, fy + Math.round(FTR / 2) + 6);
+  ctx.textAlign = 'left';
+  ctx.fillText(_mumuTxt2, rectX(SW - SM - LOGO_W - 18 - ctx.measureText(_mumuTxt2).width,
+                                ctx.measureText(_mumuTxt2).width, SW), fy + Math.round(FTR / 2) + 6);
+  alignStart(ctx);
   ctx.save(); ctx.filter = 'brightness(1.25) saturate(1.1)';
-  ctx.drawImage(LOGO_IMG, SW - SM - LOGO_W, fy + Math.round((FTR - LOGO_H) / 2), LOGO_W, LOGO_H);
+  ctx.drawImage(LOGO_IMG, rectX(SW - SM - LOGO_W, LOGO_W, SW), fy + Math.round((FTR - LOGO_H) / 2), LOGO_W, LOGO_H);
   ctx.restore();
 
   return canvas;

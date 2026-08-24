@@ -6,7 +6,7 @@
 <title>文章分享｜木木人 AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+Thai:wght@400;500;700&family=Noto+Sans+Myanmar:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=Noto+Sans+Lao:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700&family=Noto+Sans+TC:wght@300;400;500;700&family=Noto+Sans+Thai:wght@400;500;700&family=Noto+Sans+Myanmar:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=Noto+Sans+Lao:wght@400;500;700&family=Noto+Sans:wght@400;500;700&family=Noto+Serif+Tibetan:wght@400;500;700&family=Noto+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -845,8 +845,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=7"></script>
-<script src="card-renderer.js?v=7"></script>
+<script src="config.js?v=8"></script>
+<script src="card-renderer.js?v=8"></script>
 <script>
 'use strict';
 
@@ -872,8 +872,18 @@ const LANG_META = {
   my: { label:'緬甸文', tab:'緬',   name:'緬甸文' },
   lo: { label:'寮文',   tab:'寮',   name:'寮文' },
   km: { label:'高棉文', tab:'柬',   note:'柬埔寨',        name:'高棉文（柬埔寨）' },
+  fr: { label:'法文',   tab:'法',   note:'含法屬太平洋',   name:'法文' },
+  es: { label:'西班牙文', tab:'西', name:'西班牙文' },
+  it: { label:'義大利文', tab:'義', name:'義大利文' },
+  mn: { label:'蒙古文', tab:'蒙',   note:'蒙古國・西里爾',  name:'蒙古文（西里爾字母，蒙古國用法）' },
+  bo: { label:'藏文',   tab:'藏',   name:'藏文' },
+  ug: { label:'維吾爾文', tab:'維', note:'右至左',         name:'維吾爾文' },
 };
-const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km'];
+const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','mn','bo','ug'];
+
+// 拉丁語系有成熟的在地藥名（INN）體系，硬要保留英文反而不自然：
+// 義大利文的 gemcitabina 才是正確寫法，寫 gemcitabine 讀起來像外來語。
+const LOCALIZED_TERM_LANGS = ['fr','es','it'];
 const PHASE1_LANGS   = ['zh','en'];      // Step 1 固定產出，中文卡的英文對照需要它
 const LANG_STORE_KEY = 'academic_share_langs';
 
@@ -1001,7 +1011,9 @@ async function translateLangs() {
 
 【最重要】必須【直接從下方原文】翻譯，不可從英文或中文版轉譯——轉兩手會走味。
 英文版結構只用來對齊：keyPoints 的條數與順序必須與它一一對應。
-醫學專有名詞（藥名、基因名、疾病名、檢驗項目、儀器與技術名稱）一律保留英文原文不翻譯。
+${LOCALIZED_TERM_LANGS.includes(code)
+  ? '醫學專有名詞（藥名、基因名、疾病名）請使用該語言的標準寫法（INN），例如義大利文的 gemcitabina；若該語言沒有標準寫法才保留英文原文。'
+  : '醫學專有名詞（藥名、基因名、疾病名、檢驗項目、儀器與技術名稱）一律保留英文原文不翻譯。'}
 
 只輸出 JSON，不加任何說明或 markdown：
 {
