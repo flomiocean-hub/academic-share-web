@@ -308,7 +308,39 @@ input[type="text"].field { min-height: 38px; }
 canvas { display: none; }
 
 /* ── 多語言 ── */
-#langPicker { display: flex; flex-wrap: wrap; gap: 8px; }
+#langPicker { display: flex; flex-direction: column; gap: 7px; }
+
+.tier-row { display: flex; align-items: flex-start; gap: 10px; }
+.tier-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+.tier-label {
+  flex: 0 0 84px; padding-top: 6px;
+  font-size: 11px; line-height: 1.3; letter-spacing: .02em;
+  font-variant-numeric: tabular-nums; text-align: right; color: var(--sage);
+}
+.tier-label.t1 { color: #A08A4E; }
+.tier-label.t2 { color: #8A7237; }
+.tier-label.t3 { color: #6E5A28; }
+.tier-label.t4 { color: #4A3C18; font-weight: 700; }
+.tier-label.fixed { color: #9AA0A8; }
+.tier-foot { font-size: 11px; color: var(--sage); line-height: 1.6; margin-top: 3px; padding-left: 94px; }
+.tier-foot b { color: #8A7237; }
+
+/* 顏色由淺至深 = 由快至慢 */
+.lang-chk.t1 { background: #FBF6E9; border-color: #E9DDBE; }   /* 亮度 246 */
+.lang-chk.t2 { background: #F0E2B0; border-color: #DCC68E; }   /* 亮度 224 */
+.lang-chk.t3 { background: #E4D094; border-color: #CBB068; }   /* 亮度 207 */
+.lang-chk.t4 { background: #D6BC6C; border-color: #B69C48; }   /* 亮度 187 */
+.lang-chk.t1.on { background: #F4E7C0; border-color: #C9A84C; }
+.lang-chk.t2.on { background: #E9D69B; border-color: #B8973B; }
+.lang-chk.t3.on { background: #DBC37C; border-color: #A6862C; }
+.lang-chk.t4.on { background: #C9A94E; border-color: #8A7237; }
+.lang-chk.t4     { color: #3A3012; }
+.lang-chk.on     { font-weight: 700; }
+@media (max-width: 640px) {
+  .tier-row { flex-direction: column; gap: 4px; }
+  .tier-label { text-align: left; flex: none; padding-top: 0; }
+  .tier-foot { padding-left: 0; }
+}
 .translate-row {
   display: flex; align-items: flex-end; justify-content: space-between;
   gap: 16px; flex-wrap: wrap;
@@ -845,8 +877,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=8"></script>
-<script src="card-renderer.js?v=8"></script>
+<script src="config.js?v=9"></script>
+<script src="card-renderer.js?v=9"></script>
 <script>
 'use strict';
 
@@ -861,24 +893,38 @@ const MAX_IMAGES = 2;
 // tab 顯示一律用中文短名。刻意不用 ISO 代碼——緬甸語的代碼是 my，
 // 跟馬來西亞的國碼 MY 長得一樣；高棉語是 km，跟葛摩國碼 KM 一樣，並排會看錯。
 // 內部代碼仍維持 ISO 639-1 標準（送進 prompt 與檔名用）。
+// sec = 實測翻譯耗時（秒）。所有語言是並行的，總等待時間取「勾選中最慢的那一個」，
+// 不是加總——所以勾三種 10 秒級的仍然只要 10 幾秒。
 const LANG_META = {
-  zh: { label:'中文',   tab:'中',   name:'繁體中文' },
-  en: { label:'英文',   tab:'英',   name:'英文' },
-  vi: { label:'越南文', tab:'越',   name:'越南文' },
-  id: { label:'印尼文', tab:'印尼', name:'印尼文' },
-  ja: { label:'日文',   tab:'日',   name:'日文' },
-  th: { label:'泰文',   tab:'泰',   name:'泰文' },
-  ms: { label:'馬來文', tab:'馬來', note:'馬來西亞、汶萊', name:'馬來文（馬來西亞、汶萊通用）' },
-  my: { label:'緬甸文', tab:'緬',   name:'緬甸文' },
-  lo: { label:'寮文',   tab:'寮',   name:'寮文' },
-  km: { label:'高棉文', tab:'柬',   note:'柬埔寨',        name:'高棉文（柬埔寨）' },
-  fr: { label:'法文',   tab:'法',   note:'含法屬太平洋',   name:'法文' },
-  es: { label:'西班牙文', tab:'西', name:'西班牙文' },
-  it: { label:'義大利文', tab:'義', name:'義大利文' },
-  mn: { label:'蒙古文', tab:'蒙',   note:'蒙古國・西里爾',  name:'蒙古文（西里爾字母，蒙古國用法）' },
-  bo: { label:'藏文',   tab:'藏',   name:'藏文' },
-  ug: { label:'維吾爾文', tab:'維', note:'右至左',         name:'維吾爾文' },
+  zh: { label:'中文',   tab:'中',   sec:15, name:'繁體中文' },
+  en: { label:'英文',   tab:'英',   sec:15, name:'英文' },
+  vi: { label:'越南文', tab:'越',   sec:14, name:'越南文' },
+  id: { label:'印尼文', tab:'印尼', sec:10, name:'印尼文' },
+  ja: { label:'日文',   tab:'日',   sec:11, name:'日文' },
+  th: { label:'泰文',   tab:'泰',   sec:23, name:'泰文' },
+  ms: { label:'馬來文', tab:'馬來', sec:11, note:'馬來西亞、汶萊', name:'馬來文（馬來西亞、汶萊通用）' },
+  my: { label:'緬甸文', tab:'緬',   sec:31, name:'緬甸文' },
+  lo: { label:'寮文',   tab:'寮',   sec:73, name:'寮文' },
+  km: { label:'高棉文', tab:'柬',   sec:74, note:'柬埔寨',        name:'高棉文（柬埔寨）' },
+  fr: { label:'法文',   tab:'法',   sec:10, note:'含法屬太平洋',   name:'法文' },
+  es: { label:'西班牙文', tab:'西', sec:10, name:'西班牙文' },
+  it: { label:'義大利文', tab:'義', sec:10, name:'義大利文' },
+  mn: { label:'蒙古文', tab:'蒙',   sec:35, note:'蒙古國・西里爾',  name:'蒙古文（西里爾字母，蒙古國用法）' },
+  bo: { label:'藏文',   tab:'藏',   sec:44, name:'藏文' },
+  ug: { label:'維吾爾文', tab:'維', sec:82, note:'右至左',         name:'維吾爾文' },
 };
+
+// 速度分組。顏色由淺至深＝由快至慢。
+const SPEED_TIERS = [
+  { cls:'t1', label:'約 10–15 秒', max:  16 },
+  { cls:'t2', label:'約 20–35 秒', max:  40 },
+  { cls:'t3', label:'約 45 秒',    max:  60 },
+  { cls:'t4', label:'約 75–85 秒', max: 999 },
+];
+function tierOf(code) {
+  const sec = LANG_META[code].sec || 15;
+  return SPEED_TIERS.find(t => sec <= t.max) || SPEED_TIERS[SPEED_TIERS.length - 1];
+}
 const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','mn','bo','ug'];
 
 // 拉丁語系有成熟的在地藥名（INN）體系，硬要保留英文反而不自然：
@@ -906,15 +952,32 @@ function renderLangPicker() {
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(LANG_STORE_KEY) || 'null'); } catch {}
   const on = Array.isArray(saved) ? saved : ['zh','en'];
-  wrap.innerHTML = LANG_ORDER.map(c => {
+  const chip = (c) => {
     const m = LANG_META[c];
-    if (PHASE1_LANGS.includes(c)) {
-      return `<label class="lang-chk on locked" title="Step 1 固定產出"><input type="checkbox" checked disabled>${m.label}</label>`;
-    }
     const note = m.note ? `<span class="lang-note">（${m.note}）</span>` : '';
-    return `<label class="lang-chk${on.includes(c) ? ' on' : ''}" id="chk_${c}">`
+    return `<label class="lang-chk ${tierOf(c).cls}${on.includes(c) ? ' on' : ''}" id="chk_${c}" title="約 ${m.sec} 秒">`
          + `<input type="checkbox" id="lang_${c}"${on.includes(c) ? ' checked' : ''} onchange="onLangToggle('${c}')">${m.label}${note}</label>`;
+  };
+
+  // Step 1 固定產出的兩種，單獨一列
+  const locked = PHASE1_LANGS.map(c =>
+    `<label class="lang-chk locked" title="Step 1 固定產出"><input type="checkbox" checked disabled>${LANG_META[c].label}</label>`
+  ).join('');
+
+  // 其餘依速度分組，由快至慢
+  const rows = SPEED_TIERS.map(t => {
+    const codes = LANG_ORDER.filter(c => !PHASE1_LANGS.includes(c) && tierOf(c).cls === t.cls);
+    if (!codes.length) return '';
+    return `<div class="tier-row">`
+         + `<span class="tier-label ${t.cls}">${t.label}</span>`
+         + `<div class="tier-chips">${codes.map(chip).join('')}</div></div>`;
   }).join('');
+
+  wrap.innerHTML =
+      `<div class="tier-row"><span class="tier-label fixed">Step 1 固定</span>`
+    + `<div class="tier-chips">${locked}</div></div>`
+    + rows
+    + `<div class="tier-foot">等待時間取決於勾選中<b>最慢的那一個</b>，不是加總——勾三種 10 秒級仍只要十幾秒。</div>`;
 }
 
 function onLangToggle(code) {
