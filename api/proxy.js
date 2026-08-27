@@ -11,6 +11,18 @@
 //   3. 改用 allSettled：一張失敗仍會把另一張送出去，而不是整包放棄
 import { put } from '@vercel/blob';
 
+// 2026-08-27：補上存取控制。在此之前這支端點是 CORS '*' 且無驗證——
+// 任何人都能往本站的 Vercel Blob 塞圖片，並觸發 LINE 推播洗版。
+// 收件人是寫死的環境變數，所以外人無法指定收件對象，但濫用成本仍由本站承擔。
+function isAllowedOrigin(origin) {
+  try {
+    const u = new URL(origin);
+    if (u.protocol === 'http:' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1')) return true;
+    if (u.protocol !== 'https:') return false;
+    return u.hostname.startsWith('academic-share') && u.hostname.endsWith('.vercel.app');
+  } catch { return false; }
+}
+
 export const config = {
   api: { bodyParser: { sizeLimit: '16mb' } },
 };
@@ -51,11 +63,33 @@ async function uploadCard(base64, mimeType, kind) {
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  const ip     = req.headers['x-forwarded-for'] || 'unknown';
+  const log = (result, extra = {}) =>
+    console.log(JSON.stringify({ ep: 'proxy', result, origin: origin || null, ip, ...extra }));
+
+  res.setHeader('Access-Control-Allow-Origin', origin && isAllowedOrigin(origin) ? origin : 'null');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Share-Token');
+  res.setHeader('Vary', 'Origin');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── 存取控制（與 api/claude.js 同一把通行碼）──────────────
+  const expected = process.env.SHARE_ACCESS_TOKEN;
+  if (!expected) {
+    log('misconfigured');
+    return res.status(500).json({ error: '伺服器未設定通行碼' });
+  }
+  if (req.headers['x-share-token'] !== expected) {
+    log('denied_token');
+    return res.status(401).json({ error: '通行碼錯誤或未提供', code: 'BAD_TOKEN' });
+  }
+  if (origin && !isAllowedOrigin(origin)) {
+    log('denied_origin');
+    return res.status(403).json({ error: '來源不允許' });
+  }
+  log('allowed');
 
   const lineToken  = process.env.LINE_CHANNEL_ACCESS_TOKEN;
   const lineUserId = process.env.LINE_TARGET_USER_ID;
