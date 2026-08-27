@@ -877,8 +877,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=10"></script>
-<script src="card-renderer.js?v=10"></script>
+<script src="config.js?v=11"></script>
+<script src="card-renderer.js?v=11"></script>
 <script>
 'use strict';
 
@@ -912,6 +912,9 @@ const LANG_META = {
   mn: { label:'蒙古文', tab:'蒙',   sec:35, note:'蒙古國・西里爾',  name:'蒙古文（西里爾字母，蒙古國用法）' },
   bo: { label:'藏文',   tab:'藏',   sec:44, name:'藏文' },
   ug: { label:'維吾爾文', tab:'維', sec:82, note:'右至左',         name:'維吾爾文' },
+  pt: { label:'葡萄牙文', tab:'葡', sec:10, note:'葡、巴西、東帝汶', name:'葡萄牙文' },
+  cs: { label:'捷克文',   tab:'捷', sec:10, name:'捷克文' },
+  lt: { label:'立陶宛文', tab:'立', sec:10, name:'立陶宛文' },
 };
 
 // 速度分組。顏色由淺至深＝由快至慢。
@@ -925,11 +928,11 @@ function tierOf(code) {
   const sec = LANG_META[code].sec || 15;
   return SPEED_TIERS.find(t => sec <= t.max) || SPEED_TIERS[SPEED_TIERS.length - 1];
 }
-const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','mn','bo','ug'];
+const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','pt','cs','lt','mn','bo','ug'];
 
 // 拉丁語系有成熟的在地藥名（INN）體系，硬要保留英文反而不自然：
 // 義大利文的 gemcitabina 才是正確寫法，寫 gemcitabine 讀起來像外來語。
-const LOCALIZED_TERM_LANGS = ['fr','es','it'];
+const LOCALIZED_TERM_LANGS = ['fr','es','it','pt','cs','lt'];
 const PHASE1_LANGS   = ['zh','en'];      // Step 1 固定產出，中文卡的英文對照需要它
 const LANG_STORE_KEY = 'academic_share_langs';
 
