@@ -877,8 +877,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=11"></script>
-<script src="card-renderer.js?v=11"></script>
+<script src="config.js?v=12"></script>
+<script src="card-renderer.js?v=12"></script>
 <script>
 'use strict';
 
@@ -1332,35 +1332,13 @@ function tryFill(buffer) {
   setProgress(pct, filled > 0 ? `已填入 ${filled} 個欄位…` : '解析中…');
 }
 
-/* ── 通行碼 ──────────────────────────────────────────────────
-   後端兩支端點都要 X-Share-Token。第一次使用會問一次，之後存在瀏覽器裡。
-   這擋的是「網路上任何人都能用本站的 API 額度」，不是用來分辨使用者身分。 */
-const SHARE_TOKEN_KEY = 'share_access_token';
-
-function getShareToken() {
-  let t = localStorage.getItem(SHARE_TOKEN_KEY);
-  if (!t) {
-    t = (window.prompt('請輸入通行碼（只需輸入一次）：') || '').trim();
-    if (t) localStorage.setItem(SHARE_TOKEN_KEY, t);
-  }
-  return t || '';
-}
-
-function clearShareToken() { localStorage.removeItem(SHARE_TOKEN_KEY); }
-
+/* 端點的存取控制改由伺服器端的來源檢查負責，使用者不需要輸入任何東西。
+   瀏覽器對 POST 一律會帶 Origin，非瀏覽器發出的請求會被伺服器擋下。 */
 function shareHeaders() {
-  return { 'Content-Type': 'application/json', 'X-Share-Token': getShareToken() };
+  return { 'Content-Type': 'application/json' };
 }
 
-/* 通行碼錯誤時清掉，讓下一次操作重新詢問，不要卡在錯的碼上 */
-function maybeClearToken(status) {
-  if (status === 401) {
-    clearShareToken();
-    alert('通行碼不正確，已清除。再操作一次會重新詢問。');
-    return true;
-  }
-  return false;
-}
+function maybeClearToken() { /* 已無通行碼，保留空函式以免呼叫端報錯 */ }
 
 /* 呼叫 Claude 代理並消化 SSE 串流，回傳完整文字。
    Step 1 與 Step 2 共用。onDelta 可選，用來邊收邊填欄位。 */

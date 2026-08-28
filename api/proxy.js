@@ -70,22 +70,15 @@ export default async function handler(req, res) {
 
   res.setHeader('Access-Control-Allow-Origin', origin && isAllowedOrigin(origin) ? origin : 'null');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Share-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Vary', 'Origin');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   // ── 存取控制（與 api/claude.js 同一把通行碼）──────────────
-  const expected = process.env.SHARE_ACCESS_TOKEN;
-  if (!expected) {
-    log('misconfigured');
-    return res.status(500).json({ error: '伺服器未設定通行碼' });
-  }
-  if (req.headers['x-share-token'] !== expected) {
-    log('denied_token');
-    return res.status(401).json({ error: '通行碼錯誤或未提供', code: 'BAD_TOKEN' });
-  }
-  if (origin && !isAllowedOrigin(origin)) {
+  // 2026-08-28 依需求移除通行碼，改以來源為唯一門檻，讓使用者不必輸入任何東西。
+  // 瀏覽器對 POST 一律會帶 Origin（同源也會），所以「缺 Origin」代表不是瀏覽器發的。
+  if (!origin || !isAllowedOrigin(origin)) {
     log('denied_origin');
     return res.status(403).json({ error: '來源不允許' });
   }

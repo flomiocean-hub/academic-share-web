@@ -35,7 +35,7 @@ function corsHeaders(origin) {
   return {
     'Access-Control-Allow-Origin':  origin && isAllowedOrigin(origin) ? origin : 'null',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Share-Token',
+    'Access-Control-Allow-Headers': 'Content-Type',
     'Vary':                         'Origin',
   };
 }
@@ -56,18 +56,11 @@ export default async function handler(req) {
   if (req.method !== 'POST')    return json({ error: 'Method not allowed' }, 405, origin);
 
   // ── 存取控制 ──────────────────────────────────────────────
-  // 通行碼沒設就一律拒絕（fail closed）。設定漏了而默默放行，等於回到沒有防護的狀態。
-  const expected = process.env.SHARE_ACCESS_TOKEN;
-  if (!expected) {
-    log('misconfigured');
-    return json({ error: '伺服器未設定通行碼' }, 500, origin);
-  }
-  if (req.headers.get('x-share-token') !== expected) {
-    log('denied_token');
-    return json({ error: '通行碼錯誤或未提供', code: 'BAD_TOKEN' }, 401, origin);
-  }
-  // 瀏覽器同源請求不一定帶 Origin，所以缺 Origin 不擋（通行碼才是主鎖），但記下來。
-  if (origin && !isAllowedOrigin(origin)) {
+  // 2026-08-28 依需求移除通行碼，改以來源為唯一門檻，讓使用者不必輸入任何東西。
+  // 瀏覽器對 POST 一律會帶 Origin（同源也會），所以「缺 Origin」代表不是瀏覽器發的，
+  // 直接擋掉——這能攔住絕大多數不解析網頁、直接打端點的自動掃描腳本。
+  // 擋不住存心偽造 Origin 的人；這是刻意接受的取捨，換取零輸入的使用體驗。
+  if (!origin || !isAllowedOrigin(origin)) {
     log('denied_origin');
     return json({ error: '來源不允許' }, 403, origin);
   }
