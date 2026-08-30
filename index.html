@@ -877,8 +877,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=13"></script>
-<script src="card-renderer.js?v=13"></script>
+<script src="config.js?v=14"></script>
+<script src="card-renderer.js?v=14"></script>
 <script>
 'use strict';
 
@@ -916,6 +916,16 @@ const LANG_META = {
   cs: { label:'捷克文',   tab:'捷', sec:10, name:'捷克文' },
   lt: { label:'立陶宛文', tab:'立', sec:10, name:'立陶宛文' },
   ru: { label:'俄文',     tab:'俄', sec:5,  name:'俄文' },
+  // 臺語：ISO 639-3 代碼 nan（閩南語）。實測 Haiku 產出的是「華語加幾個臺語詞」，
+  // 而且羅馬字會拼錯（ē-tàn 少一個 g），因此強制走 Sonnet。
+  nan:{ label:'臺語',     tab:'臺', sec:10, note:'漢羅混用', name:'臺語（臺灣閩南語）',
+        forceTier:'analyze',
+        promptExtra:
+`請用【漢羅混用】書寫，這是現代臺語文的主流形式：
+有標準漢字的詞用臺語漢字（採教育部推薦用字，例如 內底、共、予、揣著、懸、爾爾），
+虛詞與無本字的詞用臺羅羅馬字（例如 ê、ē-tàng、m̄-koh、mā、koh、tio̍h、kap）。
+不可整段寫成華語，也不可整段寫成羅馬字。
+特別注意：領屬助詞用 ê，不要用華語的「的」。` },
 };
 
 // 速度分組。顏色由淺至深＝由快至慢。
@@ -929,7 +939,7 @@ function tierOf(code) {
   const sec = LANG_META[code].sec || 15;
   return SPEED_TIERS.find(t => sec <= t.max) || SPEED_TIERS[SPEED_TIERS.length - 1];
 }
-const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','pt','cs','lt','ru','mn','bo','ug'];
+const LANG_ORDER     = ['zh','en','nan','vi','id','ja','th','ms','my','lo','km','fr','es','it','pt','cs','lt','ru','mn','bo','ug'];
 
 // 拉丁語系有成熟的在地藥名（INN）體系，硬要保留英文反而不自然：
 // 義大利文的 gemcitabina 才是正確寫法，寫 gemcitabine 讀起來像外來語。
@@ -1082,7 +1092,7 @@ ${LOCALIZED_TERM_LANGS.includes(code)
   ? '醫學專有名詞（藥名、基因名、疾病名）請使用該語言的標準寫法（INN），例如義大利文的 gemcitabina；若該語言沒有標準寫法才保留英文原文。'
   : '醫學專有名詞（藥名、基因名、疾病名、檢驗項目、儀器與技術名稱）一律保留英文原文不翻譯。'}
 
-只輸出 JSON，不加任何說明或 markdown：
+${meta.promptExtra ? meta.promptExtra + '\n\n' : ''}只輸出 JSON，不加任何說明或 markdown：
 {
   "title":     "${meta.name}標題",
   "editorial": "核心發現一句話",
@@ -1099,7 +1109,9 @@ ${lastSource.text ? '\n【原文】\n' + lastSource.text : '\n（原文為截圖
       content,
       // 高棉文、寮文、維吾爾文產出速度較慢（每秒 token 數約為拉丁語系的三分之一），
       // 實測單一語言可達 75 秒，逾時必須放寬，否則會誤判成失敗（實際只是還沒寫完）。
-      tier:      'translate',     // Haiku 4.5：翻譯較機械，成本約 Sonnet 的三分之一
+      // 預設 Haiku（翻譯較機械，成本約 Sonnet 的三分之一）；
+      // 個別語言可用 forceTier 指定 Sonnet——臺語就是這樣的例外。
+      tier:      meta.forceTier || 'translate',
       maxTokens: 8000,            // 實測單一語言翻譯約 500 tok，8000 綽綽有餘
       timeoutMs: 180000,
     });
