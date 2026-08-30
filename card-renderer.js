@@ -50,6 +50,7 @@ const SCRIPT_FONT = {
   km: 'Noto Sans Khmer',     // 高棉文
   lo: 'Noto Sans Lao',       // 寮文
   mn: 'Noto Sans',           // 蒙古文（西里爾字母；Noto Sans 含 cyrillic 子集）
+  ru: 'Noto Sans',           // 俄文（同一套西里爾字型，不需額外載入）
   bo: 'Noto Serif Tibetan',  // 藏文（Google Fonts 沒有 Noto Sans Tibetan）
   ug: 'Noto Sans Arabic',    // 維吾爾文（阿拉伯字母，右至左）
 };

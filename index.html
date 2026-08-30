@@ -877,8 +877,8 @@ canvas { display: none; }
 
 <canvas id="canvas" width="1080" height="1350"></canvas>
 
-<script src="config.js?v=12"></script>
-<script src="card-renderer.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="card-renderer.js?v=13"></script>
 <script>
 'use strict';
 
@@ -915,11 +915,12 @@ const LANG_META = {
   pt: { label:'葡萄牙文', tab:'葡', sec:10, note:'葡、巴西、東帝汶', name:'葡萄牙文' },
   cs: { label:'捷克文',   tab:'捷', sec:10, name:'捷克文' },
   lt: { label:'立陶宛文', tab:'立', sec:10, name:'立陶宛文' },
+  ru: { label:'俄文',     tab:'俄', sec:5,  name:'俄文' },
 };
 
 // 速度分組。顏色由淺至深＝由快至慢。
 const SPEED_TIERS = [
-  { cls:'t1', label:'約 10–15 秒', max:  16 },
+  { cls:'t1', label:'約 5–15 秒',  max:  16 },
   { cls:'t2', label:'約 20–35 秒', max:  40 },
   { cls:'t3', label:'約 45 秒',    max:  60 },
   { cls:'t4', label:'約 75–85 秒', max: 999 },
@@ -928,11 +929,11 @@ function tierOf(code) {
   const sec = LANG_META[code].sec || 15;
   return SPEED_TIERS.find(t => sec <= t.max) || SPEED_TIERS[SPEED_TIERS.length - 1];
 }
-const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','pt','cs','lt','mn','bo','ug'];
+const LANG_ORDER     = ['zh','en','vi','id','ja','th','ms','my','lo','km','fr','es','it','pt','cs','lt','ru','mn','bo','ug'];
 
 // 拉丁語系有成熟的在地藥名（INN）體系，硬要保留英文反而不自然：
 // 義大利文的 gemcitabina 才是正確寫法，寫 gemcitabine 讀起來像外來語。
-const LOCALIZED_TERM_LANGS = ['fr','es','it','pt','cs','lt'];
+const LOCALIZED_TERM_LANGS = ['fr','es','it','pt','cs','lt','ru'];
 const PHASE1_LANGS   = ['zh','en'];      // Step 1 固定產出，中文卡的英文對照需要它
 const LANG_STORE_KEY = 'academic_share_langs';
 
